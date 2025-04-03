@@ -1,8 +1,8 @@
-const express = require('express');
-const { getUsers } = require('../controllers/usersController');
+import express from 'express';
+import { getUsers } from '../controllers/usersController.js';
 
 const router = express.Router();
 
 router.get('/', getUsers);
 
-module.exports = router;
+export { router as usersRoutes };
