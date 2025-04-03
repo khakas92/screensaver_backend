@@ -1,6 +1,8 @@
-const knex = require('../db');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+import bcrypt from "bcrypt";
+import jwt from 'jsonwebtoken';
+import { db } from "../db/index.js";
+import { users } from '../db/schema.js';
+import { eq } from "drizzle-orm";
 
 
 const generateTokens = (user) => {
@@ -20,18 +22,20 @@ const generateTokens = (user) => {
 };
 
 
-const login = async (identifier, password) => {
-
+export const login = async (identifier, password) => {
     const isEmail = identifier.includes("@");
-    const user = await knex('users')
-        .where(isEmail ? { email: identifier } : { username: identifier })
-        .first();
 
-    if (!user || !bcrypt.compareSync(password, user.password)) {
+    const user = await db
+        .select()
+        .from(users)
+        .where(isEmail ? eq(users.email, identifier) : eq(users.username, identifier))
+        .limit(1); // Ограничиваем 1 результат
+
+    if (!user[0] || !bcrypt.compareSync(password, user[0].password)) {
         throw { status: 401, message: "Invalid username or password." };
     }
     delete user.password;
-    return generateTokens(user);
+    return generateTokens(user[0]);
 };
 
 
@@ -46,31 +50,35 @@ const refreshAccessToken = async (refreshToken) => {
             { expiresIn: process.env.ACCESS_EXPIRES }
         );
     } catch {
-        throw { status: 403, message: "Invalid refresh-токен" };
+        throw { status: 403, message: "Invalid refresh token" };
     }
 };
 
 
 const register = async (username, email, password, birth_date) => {
     const hashedPassword = await bcrypt.hash(password, 10);
-
+  
     try {
-        const [user] = await knex('users')
-            .insert({ username, email, password: hashedPassword, birth_date })
-            .returning(['id', 'username', 'email', 'birth_date']);
-        return user;
+      const [user] = await db
+        .insert(users)
+        .values({ username, email, password: hashedPassword, birth_date })
+        .returning({ id: users.id, username: users.username, email: users.email, birth_date: users.birth_date });
+  
+      return user;
     } catch (error) {
-        console.log(error);
-        if (error.code === "23505") {
-            if (error.constraint === "users_email_unique") {
-                throw new Error('Email already exists');
-            }
-            if (error.constraint === "users_username_unique") {
-                throw new Error('Username already exists');
-            }
+      console.error(error);
+  
+      if (error.code === "23505") {
+        if (error.message.includes("users_email_unique")) {
+          throw new Error("Email already exists");
         }
-        throw error;
+        if (error.message.includes("users_username_unique")) {
+          throw new Error("Username already exists");
+        }
+      }
+  
+      throw error;
     }
 };
 
-module.exports = { register, login, refreshAccessToken };
+export default { register, login, refreshAccessToken };

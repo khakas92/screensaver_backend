@@ -1,9 +1,9 @@
-const express = require('express');
-const { getProfile, patchProfile } = require("../controllers/profileController");
+import express from 'express';
+import { getProfile, patchProfile } from "../controllers/profileController.js";
 
 const router = express.Router();
 
 router.get('/', getProfile);
 router.patch('/', patchProfile);
 
-module.exports = router;
+export { router as profileRoutes };

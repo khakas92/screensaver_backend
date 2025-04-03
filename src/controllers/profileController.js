@@ -1,8 +1,10 @@
-const jwt = require("jsonwebtoken");
-const knex = require("../db");
+import jwt from "jsonwebtoken";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 
-const getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
   
@@ -10,14 +12,18 @@ const getProfile = async (req, res) => {
   
     jwt.verify(token, process.env.ACCESS_SECRET, async (err, decoded) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
-  
-      const user = await knex("users").where({ id: decoded.id }).first();
-      res.json({ id: user.id, username: user.username });
+
+      const user = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, decoded.id))
+        .limit(1);
+      res.json({ id: user[0].id, username: user[0].username });
     });
 };
 
 
-const patchProfile = async (req, res) => {
+export const patchProfile = async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
   
@@ -26,7 +32,10 @@ const patchProfile = async (req, res) => {
     jwt.verify(token, process.env.ACCESS_SECRET, async (err, decoded) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
       try {
-        await knex("users").where({ id: decoded.id }).update(req.body);
+        await db
+          .update(users)
+          .set(req.body)
+          .where(eq(users.id, decoded.id));
       } catch (error) {
         console.log(error);
         if (error.code === "23505") {
@@ -38,10 +47,11 @@ const patchProfile = async (req, res) => {
           }
         }
       }
-
-      const updatedUser = await knex("users").where({ id: decoded.id }).first();
-      res.status(200).json(updatedUser);
+      const updatedUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, decoded.id))
+        .limit(1);
+      res.status(200).json(updatedUser[0]);
     });
 };
-
-module.exports = { getProfile, patchProfile };

@@ -1,8 +1,9 @@
-const jwt = require("jsonwebtoken");
-const knex = require("../db");
+import jwt from "jsonwebtoken";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
 
 
-const getUsers = async (req, res) => {
+export const getUsers = async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
   
@@ -11,9 +12,7 @@ const getUsers = async (req, res) => {
     jwt.verify(token, process.env.ACCESS_SECRET, async (err, decoded) => {
       if (err) return res.status(403).json({ message: "Forbidden" });
   
-      const users = await knex("users");
-      res.json(users);
+      const result = await db.select().from(users);
+      res.json(result);
     });
 };
-
-module.exports = { getUsers };

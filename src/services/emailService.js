@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_SERVER,
@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendEmail(to, subject, text) {
+export async function sendEmail(to, subject, text) {
   await transporter.sendMail({
     from: '"SCREENSAVER" <info@screensaver.win>',
     to,
@@ -19,4 +19,4 @@ async function sendEmail(to, subject, text) {
   console.log("Email sent!");
 }
 
-module.exports = { sendEmail };
+//module.exports = { sendEmail };
